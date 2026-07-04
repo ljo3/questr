@@ -29,7 +29,7 @@ Questr is a static, zero-backend web app that turns any location on Earth into a
 | **Dark / Light mode** | Follows system preference, toggle in header |
 | **Copy to clipboard** | Copy coordinates or full address with one click |
 | **📖 Easter-egg hunts & quizzes** | Find POIs against the clock, guess-the-spot, earn passport XP |
-| **🖼️ Photo collage** | Upload 3–6 trip photos → AI-themed travel-journal page (AWS + Actions) |
+| **🖼️ Photo collage** | Upload 3–6 trip photos → AI-themed travel-journal page (self-hosted API + S3) |
 | **Fully static** | No server, no database — deploys anywhere |
 
 ---
@@ -44,9 +44,9 @@ Questr is a static, zero-backend web app that turns any location on Earth into a
 - **[CartoDB](https://carto.com/)** — dark & light tiles
 - **[Stadia Maps / Stamen](https://stadiamaps.com/)** — terrain tiles
 - **[OpenTopoMap](https://opentopomap.org/)** — topographic tiles
-- **[Python](https://python.org/) + [Pillow](https://python-pillow.org/)** — collage rendering engine (GitHub Actions)
+- **[Python](https://python.org/) + [Pillow](https://python-pillow.org/)** — collage rendering engine (runs on the box, or offline)
 - **Vision via [OpenRouter](https://openrouter.ai/)** — theme detection & layout judging (optimizer/evaluator loop; model slug is swappable)
-- **[AWS S3 + Lambda](https://aws.amazon.com/)** — photo storage & presigned-upload signing endpoint
+- **[AWS S3](https://aws.amazon.com/s3/)** — collage storage (public-read), written by a self-hosted **[FastAPI](https://fastapi.tiangolo.com/)** service
 
 ---
 
@@ -104,24 +104,24 @@ Any static host works: Netlify, Vercel, S3, etc. Just point it at the `dist/` fo
 ## 🖼️ Photo Collage / Travel Journal
 
 Upload 3–6 photos from the Journal panel and Questr builds a themed collage
-"journal page". All heavy lifting stays in **AWS + GitHub Actions** — the
-Cloudflare-hosted page holds **no secrets**.
+"journal page". The browser POSTs the photos to a small **self-hosted API**
+(one always-on box), which runs the collage engine and uploads the finished
+image to S3 — the Cloudflare-hosted page holds **no secrets**.
 
 ```
 Browser (Questr, Cloudflare Pages)
-   │  POST {action:"sign"}          ┌─────────────────────────────┐
-   ├───────────────────────────────▶│  AWS Lambda (Function URL)  │
-   │  ◀── presigned PUT URL ────────│  · presigns S3 PUT (IAM role)│
-   │                                │  · fires repo_dispatch (PAT) │
-   │  PUT photo ──▶  S3  <date>/…   └─────────────────────────────┘
-   │  POST {action:"build"} ───────────────┐
-   │                                        ▼
-   │                         GitHub Actions (collage.yml)
-   │                         python -m collage.build --date <date>
-   │                           download → theme → optimize/judge → render
-   │                           upload  <date>/collage.jpg  (public-read)
-   ◀── poll & display collage.jpg ─────────┘
+   │  POST /build  (multipart: 3–6 photos)
+   ▼
+Collage API  ──►  optimize/evaluate engine  ──►  S3  <date>/<id>/collage.jpg
+(server/, on a box)      (OpenRouter + Pillow)          (public-read)
+   │  202 {collageUrl}                                        ▲
+   ◀────────────── browser polls collageUrl ──────────────────┘  shows it inline
 ```
+
+> **Why a box and not Lambda?** The original design used an AWS Lambda Function
+> URL, but this AWS account blocks anonymous public Function URLs. Self-hosting
+> the endpoint sidesteps that and also folds the build step in — no GitHub
+> Actions, no GitHub token. See [`server/`](server) and [`infra/`](infra).
 
 The engine (`collage/`) runs **fully offline** with a deterministic heuristic
 fallback — no AWS, no API key needed to try it:
@@ -136,79 +136,15 @@ heuristic scorer picks the winner. The model defaults to
 `anthropic/claude-opus-4.8` and is overridable via `COLLAGE_MODEL` (any vision
 model OpenRouter serves).
 
-### One-time setup
+### Deploying the pipeline
 
-<details>
-<summary><b>1. S3 bucket</b> — <code>photo-bucket-333886071196-eu-west-3-an</code> (eu-west-3)</summary>
-
-**CORS** (so the browser can PUT via the presigned URL):
-
-```json
-[{
-  "AllowedOrigins": ["https://questr.pages.dev", "http://localhost:5173"],
-  "AllowedMethods": ["PUT", "GET"],
-  "AllowedHeaders": ["*"],
-  "ExposeHeaders": ["ETag"],
-  "MaxAgeSeconds": 3000
-}]
-```
-
-**Public read for the finished collages only** (bucket policy):
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Sid": "PublicReadCollages",
-    "Effect": "Allow",
-    "Principal": "*",
-    "Action": "s3:GetObject",
-    "Resource": "arn:aws:s3:::photo-bucket-333886071196-eu-west-3-an/*/collage.jpg"
-  }]
-}
-```
-</details>
-
-<details>
-<summary><b>2. AWS Lambda</b> — the signing endpoint (<code>lambda/handler.py</code>)</summary>
-
-- Runtime **Python 3.12**, handler `handler.handler`, a **Function URL** (auth `NONE`).
-- **Execution role** needs `s3:PutObject` on `…/*` (to presign uploads).
-- **Environment variables:**
-  | Var | Value |
-  |---|---|
-  | `PHOTO_BUCKET` | `photo-bucket-333886071196-eu-west-3-an` |
-  | `GH_REPO` | `ljo3/questr` |
-  | `GH_TOKEN` | GitHub PAT with `repo` (or fine-grained *Dispatch*) scope |
-  | `ALLOW_ORIGIN` | `https://questr.pages.dev` |
-
-Copy the Function URL into the frontend build env: `VITE_QUESTR_SIGN_URL`.
-</details>
-
-<details>
-<summary><b>3. GitHub Actions secrets</b> — for <code>.github/workflows/collage.yml</code></summary>
-
-| Secret | Purpose |
-|---|---|
-| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | S3 read (photos) + write (collage) |
-| `AWS_REGION` | `eu-west-3` (optional, defaults) |
-| `PHOTO_BUCKET` | bucket name (optional, defaults) |
-| `OPENROUTER_API_KEY` | enables the vision model (optional — heuristic fallback otherwise) |
-| `COLLAGE_MODEL` | *(repo variable, optional)* override the model slug, e.g. `anthropic/claude-opus-4.8` |
-
-The workflow runs nightly (22:00 UTC) and on the `build-collage`
-`repository_dispatch` fired by the Lambda when someone taps **Create collage now**.
-</details>
-
-<details>
-<summary><b>4. Frontend env</b></summary>
-
-```bash
-# .env (Cloudflare Pages build variable)
-VITE_QUESTR_SIGN_URL=https://<your-lambda-id>.lambda-url.eu-west-3.on.aws/
-```
-When unset, the collage UI shows a friendly "not configured yet" message.
-</details>
+1. **AWS** — create the S3 bucket policy/CORS and the least-privilege
+   `questr-signer` IAM user → [`infra/README.md`](infra/README.md).
+2. **The box** — provision a small VPS, drop in the secrets, point a hostname at
+   it (TLS via Caddy) → [`server/README.md`](server/README.md).
+3. **Frontend** — set `VITE_QUESTR_API_URL=https://<host>` in `.env` and in
+   Cloudflare Pages, then redeploy. When unset, the collage UI shows a friendly
+   "not configured yet" message.
 
 ---
 
@@ -237,7 +173,7 @@ src/
 index.html        # HTML shell
 vite.config.js    # Vite config
 
-collage/          # Python collage engine (runs in GitHub Actions)
+collage/          # Python collage engine (runs on the box, or offline)
 ├── build.py      # CLI entry point (--date / --local / --no-upload)
 ├── config.py     # bucket, region, model, canvas, loop settings
 ├── s3io.py       # list/download photos, upload collage
@@ -248,42 +184,15 @@ collage/          # Python collage engine (runs in GitHub Actions)
 ├── optimize.py   # optimizer/evaluator loop (templates → mutations → winner)
 └── sample/       # synthetic photos for offline testing
 
-lambda/
-└── handler.py    # AWS Lambda: /sign presigned PUT + /build repo_dispatch
+server/           # Self-hosted collage API (the always-on box)
+├── app.py        # FastAPI: POST /build + GET /healthz
+├── setup.sh      # one-shot Ubuntu provisioner (deps, systemd, Caddy, ufw)
+├── questr-api.service  # systemd unit
+└── Caddyfile     # auto-HTTPS reverse proxy
 
-.github/workflows/
-└── collage.yml   # nightly cron + on-demand repository_dispatch
+infra/            # AWS setup: S3 CORS/policy + scoped questr-signer IAM user
 ```
 
 ---
 
 Made with ❤️ by **Lawrence**
-
-
-
-TODO:
-
-The photo collage / travel journal feature is complete end-to-end. Here's what shipped:
-
-Python engine (collage/) — verified running offline
-
-build.py orchestrates: download → detect_theme → optimizer/evaluator loop → render → upload
-Fixed the polaroid dead-space bug (rows now pack to photo height and center vertically); confirmed via a 5-template contact sheet — grid centers its short last row, hero/filmstrip/columns fill cleanly, polaroid is tight
-Runs fully offline with a deterministic heuristic fallback; Claude vision (claude-opus-4-8) kicks in when ANTHROPIC_API_KEY is set
-GitHub Actions (.github/workflows/collage.yml)
-
-Nightly cron (22:00 UTC) + repository_dispatch (build-collage) for on-demand + manual workflow_dispatch
-Per-day concurrency guard so the same date never builds twice at once
-AWS Lambda (lambda/handler.py) — the single Function URL keeping all secrets server-side
-
-{action:"sign"} → presigned S3 PUT via the execution role's IAM (no static keys in the browser), returns date-prefixed key + eventual public collage URL
-{action:"build"} → fires the GitHub repository_dispatch
-CORS preflight handled
-Frontend (src/App.jsx + App.css) — build passes ✓
-
-Photo picker (tap or drag-drop, 3–6 photos, thumbnails with remove buttons) inside the Journal modal
-"Create collage now" button → presigns + uploads each photo → triggers the build → polls the public S3 URL and displays the finished collage inline
-Reads the Lambda URL from VITE_QUESTR_SIGN_URL; shows a friendly "not configured yet" note when unset
-README — full setup docs (architecture diagram, S3 CORS + collage-only public-read policy, Lambda env vars, Actions secrets, frontend env) plus updated Features/Tech Stack/Project Structure.
-
-One note: npm run lint can't run — the eslint binary isn't present in this repo's node_modules (it's referenced in the script but not installed as a dep). That's pre-existing, not from these changes; npm run build compiles clean.

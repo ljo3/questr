@@ -35,7 +35,7 @@ export AWS_ACCESS_KEY_ID=$ACCESS_KEY AWS_SECRET_ACCESS_KEY=$SECRET_ACCESS_KEY AW
 aws iam create-user --user-name questr-signer
 aws iam put-user-policy --user-name questr-signer \
   --policy-name s3-put-collages \
-  --policy-document file://infra/lambda-s3-put-policy.json
+  --policy-document file://infra/s3-put-policy.json
 aws iam create-access-key --user-name questr-signer      # copy the key + secret
 ```
 
