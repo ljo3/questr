@@ -57,7 +57,10 @@ def parse_front_matter(text: str) -> dict:
             elif val.startswith("[") and val.endswith("]"):
                 inner = val[1:-1].strip()            # inline flow list: [] or [a, b]
                 data[key] = [_unquote(x) for x in inner.split(",") if x.strip()]
-                current = None
+                # An empty `key: []` still accepts `- item` lines below it —
+                # people naturally append URLs under the placeholder without
+                # deleting the brackets, and those photos must not be dropped.
+                current = key if not data[key] else None
             else:
                 data[key] = _unquote(val)
                 current = None
