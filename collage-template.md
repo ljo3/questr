@@ -44,13 +44,13 @@ photos:
 
 ![collage](https://photo-bucket-333886071196-eu-west-3-an.s3.eu-west-3.amazonaws.com/2026-07-04/collage.jpg)
 
-- **Title:** Paris Skies
+- **Title:** Faded Polaroid Afternoon
 - **Mood:** nostalgic
-- **Layout:** polaroid (score 82.0, judge: vision)
+- **Layout:** polaroid (score 78.0, judge: vision)
 - **Theme source:** template-vision
-- **Photos:** 3
+- **Photos:** 5
 - **Committed image:** [`collage/output/collage.jpg`](collage/output/collage.jpg)
 - **S3:** https://photo-bucket-333886071196-eu-west-3-an.s3.eu-west-3.amazonaws.com/2026-07-04/collage.jpg
-- **Built:** 2026-07-04 22:02:02 UTC
+- **Built:** 2026-07-04 22:04:46 UTC
 
 <!-- RESULT:END -->
