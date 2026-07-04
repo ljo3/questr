@@ -181,14 +181,18 @@ def run(md_path: str) -> int:
     print(f"Wrote {rel_image}")
 
     # Best-effort S3 upload (uses <date>/collage.jpg like the daily build).
+    # Always attempt so the log is explicit about why it did/didn't happen —
+    # boto3 raises cleanly when no credentials are configured.
     s3_url = None
     date = meta.get("date") or dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
-    if os.environ.get("AWS_ACCESS_KEY_ID") or os.environ.get("AWS_PROFILE"):
-        try:
-            s3_url = s3io.upload_collage(date, out_path)
-            print(f"Uploaded: {s3_url}")
-        except Exception as e:
-            print(f"[s3] upload skipped: {e}")
+    have_creds = bool(os.environ.get("AWS_ACCESS_KEY_ID")
+                      or os.environ.get("AWS_PROFILE"))
+    print(f"[s3] AWS credentials in env: {have_creds}")
+    try:
+        s3_url = s3io.upload_collage(date, out_path)
+        print(f"Uploaded: {s3_url}")
+    except Exception as e:
+        print(f"[s3] upload skipped: {type(e).__name__}: {e}")
 
     block = _render_result_block(rel_image, s3_url, theme, log, len(photos))
     _write_result(md_path, text, block)
