@@ -1,6 +1,10 @@
 ---
 template: https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT_50KNJP2Pb5y0R7OR50FhxB70o3XktCx207-EJ1pEmw&s=10
 photos: []
+   - https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQck3myLozI9VhZKrY1O3zggS49SmdAGUHM4SsKEtxIUg&s=10
+   - https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR7GJBXlQ3OF8bY82wTFblEORSQwA2Bvq5zTlMA8Q2Jxg&s
+   - https://all-andorra.com/wp-content/uploads/2023/06/Eiffel-Tower_excursion-min.png
+   - 
 date: 2026-07-04
 ---
 
@@ -40,13 +44,13 @@ photos:
 
 ![collage](https://photo-bucket-333886071196-eu-west-3-an.s3.eu-west-3.amazonaws.com/2026-07-04/collage.jpg)
 
-- **Title:** Quiet Blue Reverie
+- **Title:** Quiet Blue Afternoon
 - **Mood:** serene
 - **Layout:** polaroid (score 72.0, judge: vision)
 - **Theme source:** template-vision
 - **Photos:** 5
 - **Committed image:** [`collage/output/collage.jpg`](collage/output/collage.jpg)
 - **S3:** https://photo-bucket-333886071196-eu-west-3-an.s3.eu-west-3.amazonaws.com/2026-07-04/collage.jpg
-- **Built:** 2026-07-04 21:50:15 UTC
+- **Built:** 2026-07-04 21:56:26 UTC
 
 <!-- RESULT:END -->
