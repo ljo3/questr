@@ -1,0 +1,12 @@
+node_modules
+dist
+.DS_Store
+
+# Python (collage engine)
+.venv-collage
+__pycache__/
+*.py[cod]
+
+# Local env
+.env
+.env.local
