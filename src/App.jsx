@@ -297,11 +297,12 @@ async function fetchMoreInfo(lat, lon) {
 const HUNT_SECONDS = 180
 const JOURNAL_KEY = 'tc-travel-journal'
 
-// ── Photo collage (AWS Lambda signing endpoint) ───────────
-// Function URL of the Questr Lambda that presigns S3 uploads and triggers the
-// GitHub Actions collage build. Set VITE_QUESTR_SIGN_URL at build time; when
-// unset the collage UI shows a friendly "not configured yet" note.
-const SIGN_URL = (import.meta.env.VITE_QUESTR_SIGN_URL || '').replace(/\/$/, '')
+// ── Photo collage (Questr collage API on the Vultr box) ───────────
+// Base URL of the always-on collage service: it receives the photos, runs the
+// optimizer/evaluator engine, and uploads the finished collage to S3. Set
+// VITE_QUESTR_API_URL at build time; when unset the collage UI shows a
+// friendly "not configured yet" note.
+const API_URL = (import.meta.env.VITE_QUESTR_API_URL || '').replace(/\/$/, '')
 const COLLAGE_MIN = 3
 const COLLAGE_MAX = 6
 
@@ -817,46 +818,26 @@ export default function App() {
     setTimeout(attempt, 15000)
   }, [])
 
-  // Upload each photo via a Lambda-presigned S3 PUT, then trigger the build.
+  // POST the photos to the collage API; it builds and uploads to S3, and we
+  // poll the returned public URL until the collage appears.
   const uploadAndBuild = useCallback(async () => {
-    if (!SIGN_URL) { setCollageStatus('Collage service not configured yet.'); return }
+    if (!API_URL) { setCollageStatus('Collage service not configured yet.'); return }
     if (photoFiles.length < COLLAGE_MIN) {
       setCollageStatus(`Pick at least ${COLLAGE_MIN} photos.`); return
     }
     setUploading(true)
     setCollageReady(false)
     setCollageUrl('')
-    let date = ''
-    let target = ''      // public URL the finished collage will live at
     try {
-      for (let i = 0; i < photoFiles.length; i++) {
-        const file = photoFiles[i]
-        setCollageStatus(`Uploading photo ${i + 1} of ${photoFiles.length}…`)
-        const signRes = await fetch(SIGN_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'sign', contentType: file.type }),
-        })
-        if (!signRes.ok) throw new Error('Could not get an upload URL.')
-        const { uploadUrl, date: d, collageUrl: cu } = await signRes.json()
-        date = d
-        target = cu
-        const put = await fetch(uploadUrl, {
-          method: 'PUT',
-          headers: { 'Content-Type': file.type },
-          body: file,
-        })
-        if (!put.ok) throw new Error('Upload failed.')
-      }
-      setCollageStatus('Building your collage… this runs on GitHub Actions and takes a minute.')
-      const build = await fetch(SIGN_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'build', date }),
-      })
-      if (!build.ok) throw new Error('Could not start the collage build.')
+      setCollageStatus('Uploading your photos…')
+      const form = new FormData()
+      photoFiles.forEach(f => form.append('files', f))
+      const res = await fetch(`${API_URL}/build`, { method: 'POST', body: form })
+      if (!res.ok) throw new Error('Could not start the collage build.')
+      const { collageUrl } = await res.json()
       setPhotoFiles([])
-      pollCollage(target)
+      setCollageStatus('Building your collage… this takes about a minute.')
+      pollCollage(collageUrl)
     } catch (err) {
       setCollageStatus(err.message || 'Something went wrong.')
     } finally {
