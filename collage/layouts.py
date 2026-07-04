@@ -20,7 +20,7 @@ from . import config
 from .theme import MOOD_BG, _luma
 
 MARGIN = 44
-FOOTER_H = 250          # title + caption band at the bottom
+FOOTER_H = 300          # title + caption band at the bottom (room for big type)
 GAP = 18
 RADIUS = 14
 
@@ -45,10 +45,14 @@ def _aspect(img) -> float:
 
 def _base(theme: dict, name: str, cells: list) -> dict:
     bg, text = _bg_text(theme)
+    palette = theme.get("palette") or ["#3a3a44"]
+    accent = palette[1] if len(palette) > 1 else palette[0]
     return {
         "name": name,
         "bg": bg,
         "text_color": text,
+        "accent": accent,
+        "palette": palette,
         "gap": GAP,
         "radius": RADIUS,
         "cells": cells,
@@ -65,17 +69,15 @@ def grid(photos, theme, order=None):
     x0, y0, W, H = _content_rect()
     cols = math.ceil(math.sqrt(n))
     rows = math.ceil(n / cols)
-    cw = (W - GAP * (cols - 1)) / cols
     ch = (H - GAP * (rows - 1)) / rows
     cells = []
-    for i, idx in enumerate(order):
-        r, c = divmod(i, cols)
-        in_row = min(cols, n - r * cols)          # items in this (possibly last) row
-        row_w = in_row * cw + (in_row - 1) * GAP
-        offx = x0 + (W - row_w) / 2               # centre a short last row
-        x = offx + c * (cw + GAP)
-        y = y0 + r * (ch + GAP)
-        cells.append({"box": (x, y, cw, ch), "photo": idx})
+    for r in range(rows):
+        row = order[r * cols:(r + 1) * cols]
+        m = len(row)
+        cw = (W - GAP * (m - 1)) / m               # stretch each row to full width
+        y = y0 + r * (ch + GAP)                     # → a short last row becomes a banner
+        for c, idx in enumerate(row):
+            cells.append({"box": (x0 + c * (cw + GAP), y, cw, ch), "photo": idx})
     return _base(theme, "grid", cells)
 
 
