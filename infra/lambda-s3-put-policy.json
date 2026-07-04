@@ -1,0 +1,11 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PresignPhotoUploads",
+      "Effect": "Allow",
+      "Action": "s3:PutObject",
+      "Resource": "arn:aws:s3:::photo-bucket-333886071196-eu-west-3-an/*"
+    }
+  ]
+}
