@@ -112,7 +112,7 @@ image to S3 — the Cloudflare-hosted page holds **no secrets**.
 Browser (Questr, Cloudflare Pages)
    │  POST /build  (multipart: 3–6 photos)
    ▼
-Collage API  ──►  optimize/evaluate engine  ──►  S3  <date>/collage-<title>-<time>.jpg
+Collage API  ──►  optimize/evaluate engine  ──►  S3  <date>/<title>-<time>/collage.jpg
 (server/, on a box)      (OpenRouter + Pillow)      (public-read, unique per build)
    │  202 {collageUrl}                                        ▲
    ◀────────────── browser polls collageUrl ──────────────────┘  shows it inline

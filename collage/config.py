@@ -32,13 +32,16 @@ def slugify(text: str, max_len: int = 40) -> str:
 
 
 def collage_object_name(title: str | None = None, when: dt.datetime | None = None) -> str:
-    """A unique, human-readable S3 object name for one build so successive
-    builds never overwrite each other: `collage-<title-slug>-<HHMMSS>.jpg`."""
+    """A unique, human-readable S3 key suffix for one build so successive
+    builds never overwrite each other: `<title-slug>-<HHMMSS>/collage.jpg`.
+    The basename stays `collage.jpg` because the bucket policy grants public
+    read on `*/collage.jpg` — a different basename would upload fine but 403
+    on view. The title+time live in the folder segment instead."""
     when = when or dt.datetime.now(dt.timezone.utc)
     stamp = when.strftime("%H%M%S")
     slug = slugify(title) if title else ""
-    mid = f"-{slug}" if slug and slug != COLLAGE_PREFIX else ""
-    return f"{COLLAGE_PREFIX}{mid}-{stamp}.jpg"
+    folder = f"{slug}-{stamp}" if slug and slug != COLLAGE_PREFIX else stamp
+    return f"{folder}/{COLLAGE_NAME}"
 
 
 # Public URL a browser uses to display a finished collage (bucket must allow
