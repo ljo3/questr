@@ -44,13 +44,13 @@ photos:
 
 ![collage](https://photo-bucket-333886071196-eu-west-3-an.s3.eu-west-3.amazonaws.com/2026-07-04/collage.jpg)
 
-- **Title:** Faded Blue Memories
+- **Title:** Paris Skies
 - **Mood:** nostalgic
-- **Layout:** polaroid (score 72.0, judge: vision)
+- **Layout:** polaroid (score 82.0, judge: vision)
 - **Theme source:** template-vision
-- **Photos:** 5
+- **Photos:** 3
 - **Committed image:** [`collage/output/collage.jpg`](collage/output/collage.jpg)
 - **S3:** https://photo-bucket-333886071196-eu-west-3-an.s3.eu-west-3.amazonaws.com/2026-07-04/collage.jpg
-- **Built:** 2026-07-04 21:59:09 UTC
+- **Built:** 2026-07-04 22:02:02 UTC
 
 <!-- RESULT:END -->
