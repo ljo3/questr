@@ -1,0 +1,8 @@
+# Questr collage API (Vultr box). Includes the collage-engine deps so one
+# `pip install -r server/requirements.txt` sets up everything.
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+Pillow>=10.2
+boto3>=1.34
+openai>=1.40

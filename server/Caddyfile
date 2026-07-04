@@ -1,0 +1,14 @@
+# Caddy reverse proxy → uvicorn, with automatic HTTPS (Let's Encrypt).
+#
+# Replace the hostname below. Two easy ways to get a valid cert:
+#   • You own a domain: use e.g.  api.yourdomain.com  (point its DNS A record
+#     at this box's IP first).
+#   • No domain: use sslip.io — the hostname IS the IP, so a box at
+#     203.0.113.9 becomes  203-0-113-9.sslip.io  and Caddy gets a real cert
+#     for it with zero DNS setup.
+#
+# Then: sudo caddy reload --config /etc/caddy/Caddyfile
+
+REPLACE-ME.sslip.io {
+    reverse_proxy 127.0.0.1:8080
+}
