@@ -38,5 +38,14 @@ photos:
 <!-- RESULT:START -->
 ## Result
 
-_Not built yet — edit the `template:` URL above and push to trigger a build._
+![collage](collage/output/collage.jpg)
+
+- **Title:** A Day Out
+- **Mood:** elegant
+- **Layout:** polaroid (score 84.2, judge: heuristic)
+- **Theme source:** heuristic
+- **Photos:** 5
+- **Committed image:** [`collage/output/collage.jpg`](collage/output/collage.jpg)
+- **Built:** 2026-07-04 21:36:03 UTC
+
 <!-- RESULT:END -->
