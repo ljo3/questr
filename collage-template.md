@@ -38,14 +38,15 @@ photos:
 <!-- RESULT:START -->
 ## Result
 
-![collage](collage/output/collage.jpg)
+![collage](https://photo-bucket-333886071196-eu-west-3-an.s3.eu-west-3.amazonaws.com/2026-07-04/collage.jpg)
 
-- **Title:** Faded Blue Reverie
-- **Mood:** nostalgic
+- **Title:** Quiet Blue Reverie
+- **Mood:** serene
 - **Layout:** polaroid (score 72.0, judge: vision)
 - **Theme source:** template-vision
 - **Photos:** 5
 - **Committed image:** [`collage/output/collage.jpg`](collage/output/collage.jpg)
-- **Built:** 2026-07-04 21:46:15 UTC
+- **S3:** https://photo-bucket-333886071196-eu-west-3-an.s3.eu-west-3.amazonaws.com/2026-07-04/collage.jpg
+- **Built:** 2026-07-04 21:50:15 UTC
 
 <!-- RESULT:END -->
