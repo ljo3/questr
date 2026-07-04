@@ -40,12 +40,12 @@ photos:
 
 ![collage](collage/output/collage.jpg)
 
-- **Title:** A Day Out
-- **Mood:** elegant
-- **Layout:** polaroid (score 84.2, judge: heuristic)
-- **Theme source:** heuristic
+- **Title:** Quiet Blue Afternoon
+- **Mood:** serene
+- **Layout:** polaroid (score 78.0, judge: vision)
+- **Theme source:** template-vision
 - **Photos:** 5
 - **Committed image:** [`collage/output/collage.jpg`](collage/output/collage.jpg)
-- **Built:** 2026-07-04 21:42:24 UTC
+- **Built:** 2026-07-04 21:44:22 UTC
 
 <!-- RESULT:END -->
