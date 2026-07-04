@@ -31,7 +31,7 @@ def build(date: str, local_dir: str | None, upload: bool, out_path: str | None):
         paths = sorted(
             os.path.join(local_dir, f)
             for f in os.listdir(local_dir)
-            if f.lower().endswith(s3io.IMAGE_EXT) and f != config.COLLAGE_NAME
+            if f.lower().endswith(s3io.IMAGE_EXT) and not f.startswith(config.COLLAGE_PREFIX)
         )
         print(f"Loaded {len(paths)} local photo(s) from {local_dir}")
     else:
@@ -60,7 +60,8 @@ def build(date: str, local_dir: str | None, upload: bool, out_path: str | None):
     print(f"Winner: {log['winner']['name']} (score {log['winner']['score']}) → {out_path}")
 
     if upload:
-        url = s3io.upload_collage(date, out_path)
+        object_name = config.collage_object_name(theme.get("title"))
+        url = s3io.upload_collage(date, out_path, name=object_name)
         print(f"Uploaded: {url}")
     return 0
 
