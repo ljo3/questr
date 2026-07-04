@@ -302,7 +302,7 @@ const JOURNAL_KEY = 'tc-travel-journal'
 // optimizer/evaluator engine, and uploads the finished collage to S3. Set
 // VITE_QUESTR_API_URL at build time; when unset the collage UI shows a
 // friendly "not configured yet" note.
-const API_URL = (import.meta.env.VITE_QUESTR_API_URL || '').replace(/\/$/, '')
+const API_URL = (import.meta.env.VITE_QUESTR_API_URL || 'https://108-61-123-231.sslip.io').replace(/\/$/, '')
 const COLLAGE_MIN = 3
 const COLLAGE_MAX = 6
 
