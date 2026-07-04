@@ -146,6 +146,36 @@ model OpenRouter serves).
    Cloudflare Pages, then redeploy. When unset, the collage UI shows a friendly
    "not configured yet" message.
 
+### 🤖 Agentic build from a template (edit a file, get a collage)
+
+There's also a **GitHub-driven** path: give it a *template image* and it builds
+a collage that emulates it — no UI, just a commit.
+
+1. Open [`collage-template.md`](collage-template.md) on GitHub and edit the
+   `template:` URL in the front matter to any reference collage/layout image
+   (optionally list your own photo URLs under `photos:`).
+2. Commit. The workflow
+   [`.github/workflows/collage-from-template.yml`](.github/workflows/collage-from-template.yml)
+   runs [`collage/from_template.py`](collage/from_template.py): it downloads the
+   template, asks the vision model to **emulate its layout, mood and palette**,
+   runs the optimize/evaluate loop with the **judge scoring each candidate by
+   resemblance to your template**, commits the finished
+   `collage/output/collage.jpg` back, and rewrites the file's **Result** section
+   with a preview.
+
+```
+edit collage-template.md ──► GitHub Actions ──► collage/from_template.py
+  (template: <image URL>)          │              (emulate template + build)
+                                   ▼
+   commit: collage/output/collage.jpg + updated Result section  (+ S3 if configured)
+```
+
+The bot commit carries `[skip ci]` so it doesn't retrigger itself. It works with
+zero secrets (heuristic fallback + committed image); to enable vision and S3,
+add repo **secrets** `OPENROUTER_API_KEY`, `AWS_ACCESS_KEY_ID`,
+`AWS_SECRET_ACCESS_KEY` and repo **variables** `AWS_REGION`, `PHOTO_BUCKET`
+(optionally `COLLAGE_MODEL`).
+
 ---
 
 ## API Usage & Limits
@@ -175,14 +205,20 @@ vite.config.js    # Vite config
 
 collage/          # Python collage engine (runs on the box, or offline)
 ├── build.py      # CLI entry point (--date / --local / --no-upload)
+├── from_template.py  # agentic build: parse collage-template.md → emulate template
+├── remote.py     # fetch template/photo images from URLs (stdlib only)
 ├── config.py     # bucket, region, model, canvas, loop settings
 ├── s3io.py       # list/download photos, upload collage
-├── theme.py      # vision (or heuristic) theme detection
+├── theme.py      # vision (or heuristic) theme detection (+ template-aware)
 ├── layouts.py    # 5 algorithmic templates (grid/hero/filmstrip/columns/polaroid)
 ├── render.py     # Pillow rasteriser (cover-crop, rounded, rotate, footer)
-├── evaluate.py   # vision judge + heuristic scorer
+├── evaluate.py   # vision judge + heuristic scorer (+ template resemblance)
 ├── optimize.py   # optimizer/evaluator loop (templates → mutations → winner)
 └── sample/       # synthetic photos for offline testing
+
+collage-template.md   # edit the template: URL + push → Actions builds a collage
+.github/workflows/
+└── collage-from-template.yml   # the GitHub-driven agentic build
 
 server/           # Self-hosted collage API (the always-on box)
 ├── app.py        # FastAPI: POST /build + GET /healthz

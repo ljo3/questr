@@ -20,6 +20,24 @@ THEME_PROMPT = (
     "deep backgrounds; a bright beach set wants light ones)."
 )
 
+TEMPLATE_THEME_PROMPT = (
+    "The FIRST image is a TEMPLATE: a reference collage whose visual style we "
+    "want to emulate. The remaining images are the traveller's photos to place "
+    "into a collage of our own. Study the template's layout, mood and colours, "
+    "then respond with ONLY a JSON object describing the collage to build:\n"
+    '{\n'
+    '  "title": "<2-4 word evocative title for the day>",\n'
+    '  "mood": "<one of: vibrant, serene, nostalgic, adventurous, cozy, elegant>",\n'
+    '  "palette": ["#rrggbb", "#rrggbb", "#rrggbb"],  // sample the TEMPLATE\'s colours\n'
+    '  "layout_hint": "<the template arrangement, one of: grid, hero, polaroid, filmstrip, columns>",\n'
+    '  "caption": "<a short, warm one-line caption for the collage>"\n'
+    '}\n'
+    "Match the TEMPLATE: if it is a tidy grid choose grid; a big photo over a "
+    "row is hero; scattered bordered snapshots are polaroid; stacked bands are "
+    "filmstrip; side-by-side verticals are columns. Sample the palette from the "
+    "template, not the photos."
+)
+
 MOOD_BG = {
     "vibrant": "#1a1220", "serene": "#eef2f4", "nostalgic": "#f4ede2",
     "adventurous": "#14212b", "cozy": "#2a1e18", "elegant": "#111114",
@@ -47,14 +65,26 @@ def _luma(hex_color: str) -> float:
     return 0.2126 * r + 0.7152 * g + 0.0722 * b
 
 
-def detect_theme(images: list[Image.Image]) -> dict:
-    result = vision.ask(images, THEME_PROMPT)
+def detect_theme(images: list[Image.Image],
+                 template: Image.Image | None = None) -> dict:
+    """Derive the collage theme. With a `template` reference image, the model is
+    asked to emulate the template's layout/mood/palette instead of inventing its
+    own."""
+    if template is not None:
+        prompt = TEMPLATE_THEME_PROMPT
+        payload = [template, *images]
+        labels = ["TEMPLATE (reference to emulate):",
+                  *[f"Photo {i + 1}:" for i in range(len(images))]]
+    else:
+        prompt, payload, labels = THEME_PROMPT, images, None
+
+    result = vision.ask(payload, prompt, labels=labels)
     if result and isinstance(result, dict) and result.get("palette"):
         result.setdefault("title", "A Day Out")
         result.setdefault("mood", "vibrant")
         result.setdefault("layout_hint", "mosaic")
         result.setdefault("caption", "")
-        result["source"] = "vision"
+        result["source"] = "template-vision" if template is not None else "vision"
         return result
 
     # ── Heuristic fallback ──

@@ -43,14 +43,16 @@ def _mutate(spec: dict, photos, theme: dict, n: int) -> list[dict]:
     return variants[:n]
 
 
-def optimize(photos, theme: dict):
-    log = {"theme": theme, "rounds": []}
+def optimize(photos, theme: dict, template=None):
+    """Run the two-round loop. An optional `template` image steers both which
+    candidate wins (the judge scores by resemblance) and appears in the log."""
+    log = {"theme": theme, "rounds": [], "template": template is not None}
 
     # ── Round 1: diverse templates ──
     specs = layouts.generate_candidates(photos, theme)
     renders = [render(s, photos) for s in specs]
     thumbs = [thumbnail(r) for r in renders]
-    scores = score_candidates(specs, thumbs, photos, theme)
+    scores = score_candidates(specs, thumbs, photos, theme, template=template)
     ranked = sorted(zip(specs, renders, scores), key=lambda t: -t[2]["score"])
     log["rounds"].append({"round": 1, "scores": scores})
 
@@ -61,7 +63,7 @@ def optimize(photos, theme: dict):
     if variants:
         v_renders = [render(s, photos) for s in variants]
         v_thumbs = [thumbnail(r) for r in v_renders]
-        v_scores = score_candidates(variants, v_thumbs, photos, theme)
+        v_scores = score_candidates(variants, v_thumbs, photos, theme, template=template)
         log["rounds"].append({"round": 2, "scores": v_scores})
         for spec, r, sc in zip(variants, v_renders, v_scores):
             if sc["score"] > best_score["score"]:

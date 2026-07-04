@@ -14,6 +14,16 @@ JUDGE_PROMPT = (
     '[{{"label": "A", "score": 0-100, "reason": "<terse>"}}, ...]'
 )
 
+TEMPLATE_JUDGE_PROMPT = (
+    "The FIRST image is a TARGET TEMPLATE. The rest are candidate collages for a "
+    'travel journal titled "{title}" (mood: {mood}). Score each candidate 0-100 '
+    "primarily on how closely its overall composition and arrangement match the "
+    "TARGET TEMPLATE, then on visual balance, minimal cropping and aesthetic "
+    "appeal.\n"
+    "Respond with ONLY a JSON array, one object per candidate in order:\n"
+    '[{{"label": "A", "score": 0-100, "reason": "<terse>"}}, ...]'
+)
+
 
 def _crop_retained(cell_box, img) -> float:
     """Fraction of the source photo still visible after cover-cropping into the
@@ -36,14 +46,25 @@ def heuristic_score(spec: dict, photos, theme: dict) -> float:
     return round(min(100, score), 1)
 
 
-def score_candidates(specs, renders, photos, theme) -> list[dict]:
-    """Return [{label, name, score, reason}] aligned with `specs`."""
+def score_candidates(specs, renders, photos, theme, template=None) -> list[dict]:
+    """Return [{label, name, score, reason}] aligned with `specs`. When a
+    `template` image is given, the judge scores by resemblance to it."""
     labels = list(string.ascii_uppercase)[: len(specs)]
 
+    if template is not None:
+        images = [template, *(r.copy() for r in renders)]
+        judge_labels = ["TARGET TEMPLATE:",
+                        *[f"Candidate {l}:" for l in labels]]
+        prompt = TEMPLATE_JUDGE_PROMPT
+    else:
+        images = [r.copy() for r in renders]
+        judge_labels = [f"Candidate {l}:" for l in labels]
+        prompt = JUDGE_PROMPT
+
     result = vision.ask(
-        [render.copy() for render in renders],
-        JUDGE_PROMPT.format(title=theme.get("title", ""), mood=theme.get("mood", "")),
-        labels=[f"Candidate {l}:" for l in labels],
+        images,
+        prompt.format(title=theme.get("title", ""), mood=theme.get("mood", "")),
+        labels=judge_labels,
         max_edge=560,
         max_tokens=600,
     )

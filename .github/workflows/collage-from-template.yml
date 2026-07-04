@@ -1,0 +1,57 @@
+name: Collage from template
+
+# Agentic build: edit the template URL in collage-template.md and push. This
+# reads it, builds a collage that emulates the template, commits the finished
+# image back, and rewrites the file's Result section. `[skip ci]` on the
+# bot commit prevents an infinite loop.
+on:
+  push:
+    paths:
+      - collage-template.md
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: collage-from-template
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # Skip the run the bot itself pushed.
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: collage/requirements.txt
+
+      - name: Install engine
+        run: pip install -r collage/requirements.txt
+
+      - name: Build collage from template
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          COLLAGE_MODEL: ${{ vars.COLLAGE_MODEL }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          PHOTO_BUCKET: ${{ vars.PHOTO_BUCKET }}
+        run: python -m collage.from_template --md collage-template.md
+
+      - name: Commit result
+        run: |
+          git config user.name  "questr-collage-bot"
+          git config user.email "actions@github.com"
+          git add collage-template.md collage/output/collage.jpg
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "collage: build from template [skip ci]"
+            git push
+          fi
