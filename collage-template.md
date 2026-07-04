@@ -1,6 +1,6 @@
 ---
 template: https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT_50KNJP2Pb5y0R7OR50FhxB70o3XktCx207-EJ1pEmw&s=10
-photos: 
+photos: []
    - https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQck3myLozI9VhZKrY1O3zggS49SmdAGUHM4SsKEtxIUg&s=10
    - https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR7GJBXlQ3OF8bY82wTFblEORSQwA2Bvq5zTlMA8Q2Jxg&s
    - https://all-andorra.com/wp-content/uploads/2023/06/Eiffel-Tower_excursion-min.png
