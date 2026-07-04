@@ -40,12 +40,12 @@ photos:
 
 ![collage](collage/output/collage.jpg)
 
-- **Title:** Quiet Blue Afternoon
-- **Mood:** serene
-- **Layout:** polaroid (score 78.0, judge: vision)
+- **Title:** Faded Blue Reverie
+- **Mood:** nostalgic
+- **Layout:** polaroid (score 72.0, judge: vision)
 - **Theme source:** template-vision
 - **Photos:** 5
 - **Committed image:** [`collage/output/collage.jpg`](collage/output/collage.jpg)
-- **Built:** 2026-07-04 21:44:22 UTC
+- **Built:** 2026-07-04 21:46:15 UTC
 
 <!-- RESULT:END -->
