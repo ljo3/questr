@@ -45,7 +45,7 @@ Questr is a static, zero-backend web app that turns any location on Earth into a
 - **[Stadia Maps / Stamen](https://stadiamaps.com/)** — terrain tiles
 - **[OpenTopoMap](https://opentopomap.org/)** — topographic tiles
 - **[Python](https://python.org/) + [Pillow](https://python-pillow.org/)** — collage rendering engine (GitHub Actions)
-- **[Claude vision](https://www.anthropic.com/)** — theme detection & layout judging (optimizer/evaluator loop)
+- **Vision via [OpenRouter](https://openrouter.ai/)** — theme detection & layout judging (optimizer/evaluator loop; model slug is swappable)
 - **[AWS S3 + Lambda](https://aws.amazon.com/)** — photo storage & presigned-upload signing endpoint
 
 ---
@@ -124,15 +124,17 @@ Browser (Questr, Cloudflare Pages)
 ```
 
 The engine (`collage/`) runs **fully offline** with a deterministic heuristic
-fallback — no AWS, no Anthropic key needed to try it:
+fallback — no AWS, no API key needed to try it:
 
 ```bash
 python -m collage.build --local ./collage/sample --no-upload --out /tmp/out.jpg
 ```
 
-With `ANTHROPIC_API_KEY` set, Claude vision reads the photos' theme and judges
-each candidate layout in an optimizer/evaluator loop; otherwise the heuristic
-scorer picks the winner.
+With `OPENROUTER_API_KEY` set, the vision model reads the photos' theme and
+judges each candidate layout in an optimizer/evaluator loop; otherwise the
+heuristic scorer picks the winner. The model defaults to
+`anthropic/claude-opus-4.8` and is overridable via `COLLAGE_MODEL` (any vision
+model OpenRouter serves).
 
 ### One-time setup
 
@@ -191,7 +193,8 @@ Copy the Function URL into the frontend build env: `VITE_QUESTR_SIGN_URL`.
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | S3 read (photos) + write (collage) |
 | `AWS_REGION` | `eu-west-3` (optional, defaults) |
 | `PHOTO_BUCKET` | bucket name (optional, defaults) |
-| `ANTHROPIC_API_KEY` | enables Claude vision (optional — heuristic fallback otherwise) |
+| `OPENROUTER_API_KEY` | enables the vision model (optional — heuristic fallback otherwise) |
+| `COLLAGE_MODEL` | *(repo variable, optional)* override the model slug, e.g. `anthropic/claude-opus-4.8` |
 
 The workflow runs nightly (22:00 UTC) and on the `build-collage`
 `repository_dispatch` fired by the Lambda when someone taps **Create collage now**.
@@ -238,10 +241,10 @@ collage/          # Python collage engine (runs in GitHub Actions)
 ├── build.py      # CLI entry point (--date / --local / --no-upload)
 ├── config.py     # bucket, region, model, canvas, loop settings
 ├── s3io.py       # list/download photos, upload collage
-├── theme.py      # Claude (or heuristic) theme detection
+├── theme.py      # vision (or heuristic) theme detection
 ├── layouts.py    # 5 algorithmic templates (grid/hero/filmstrip/columns/polaroid)
 ├── render.py     # Pillow rasteriser (cover-crop, rounded, rotate, footer)
-├── evaluate.py   # Claude judge + heuristic scorer
+├── evaluate.py   # vision judge + heuristic scorer
 ├── optimize.py   # optimizer/evaluator loop (templates → mutations → winner)
 └── sample/       # synthetic photos for offline testing
 

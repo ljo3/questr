@@ -57,7 +57,7 @@ def score_candidates(specs, renders, photos, theme) -> list[dict]:
             scored.append({
                 "label": label, "name": spec["name"],
                 "score": float(r.get("score", 0) or 0),
-                "reason": r.get("reason", ""), "judge": "claude",
+                "reason": r.get("reason", ""), "judge": "vision",
             })
         if any(s["score"] > 0 for s in scored):
             return scored

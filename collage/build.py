@@ -46,7 +46,8 @@ def build(date: str, local_dir: str | None, upload: bool, out_path: str | None):
     photos = s3io.load_images(paths[:6])           # cap at 6
 
     # 2. Theme → 3. optimize/evaluate loop
-    print(f"Claude vision: {'ON' if config.HAS_CLAUDE else 'OFF (heuristic fallback)'}")
+    print(f"Vision (OpenRouter · {config.MODEL}): "
+          f"{'ON' if config.HAS_CLAUDE else 'OFF (heuristic fallback)'}")
     theme = detect_theme(photos)
     print(f"Theme: {theme['title']!r} · mood={theme['mood']} · via {theme['source']}")
 

@@ -22,14 +22,19 @@ def collage_url(date: str) -> str:
     return f"https://{BUCKET}.s3.{AWS_REGION}.amazonaws.com/{date}/{COLLAGE_NAME}"
 
 
-# ── Claude ────────────────────────────────────────────────────────────────
-# Vision model used both to read the theme of the photos and to judge
-# candidate layouts. Overridable so CI can pin a cheaper/faster model.
-MODEL = os.environ.get("COLLAGE_MODEL", "claude-opus-4-8")
+# ── Vision (via OpenRouter) ────────────────────────────────────────────────
+# Vision reads the photos' theme and judges candidate layouts. We go through
+# OpenRouter's OpenAI-compatible endpoint so the model is a swappable slug.
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+OPENROUTER_BASE_URL = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
 
-# When no API key is present we fall back to a fully deterministic heuristic
+# OpenRouter model slug. Override with COLLAGE_MODEL to pin a cheaper/faster
+# (or different-vendor) vision model — anything OpenRouter serves works.
+MODEL = os.environ.get("COLLAGE_MODEL", "anthropic/claude-opus-4.8")
+
+# When no key is present we fall back to a fully deterministic heuristic
 # pipeline so the whole thing still runs (and is testable) offline.
-HAS_CLAUDE = bool(os.environ.get("ANTHROPIC_API_KEY"))
+HAS_CLAUDE = bool(OPENROUTER_API_KEY)
 
 # ── Canvas ────────────────────────────────────────────────────────────────
 CANVAS_W = 1600

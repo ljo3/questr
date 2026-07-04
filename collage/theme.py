@@ -54,7 +54,7 @@ def detect_theme(images: list[Image.Image]) -> dict:
         result.setdefault("mood", "vibrant")
         result.setdefault("layout_hint", "mosaic")
         result.setdefault("caption", "")
-        result["source"] = "claude"
+        result["source"] = "vision"
         return result
 
     # ── Heuristic fallback ──
