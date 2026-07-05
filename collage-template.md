@@ -44,13 +44,13 @@ photos:
 
 ![collage](https://photo-bucket-333886071196-eu-west-3-an.s3.eu-west-3.amazonaws.com/2026-07-04/collage.jpg)
 
-- **Title:** Faded Polaroid Afternoon
+- **Title:** Parisian Dream
 - **Mood:** nostalgic
-- **Layout:** polaroid (score 78.0, judge: vision)
+- **Layout:** polaroid (score 88.0, judge: vision)
 - **Theme source:** template-vision
-- **Photos:** 5
+- **Photos:** 3
 - **Committed image:** [`collage/output/collage.jpg`](collage/output/collage.jpg)
 - **S3:** https://photo-bucket-333886071196-eu-west-3-an.s3.eu-west-3.amazonaws.com/2026-07-04/collage.jpg
-- **Built:** 2026-07-04 22:04:46 UTC
+- **Built:** 2026-07-05 06:49:20 UTC
 
 <!-- RESULT:END -->
