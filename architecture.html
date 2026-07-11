@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Questr — Architecture</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f1117; color: #cdd6f4;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 15px; line-height: 1.6; padding: 2rem 1rem 4rem;
+    }
+    .page { max-width: 1080px; margin: 0 auto; }
+    h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.4rem; }
+    .subtitle { color: #6c7086; font-size: 0.9rem; margin-bottom: 2.5rem; }
+    .diagram-section { margin-bottom: 3.5rem; }
+    h2 {
+      font-size: 1.2rem; font-weight: 600; color: #89b4fa;
+      border-bottom: 1px solid #313244; padding-bottom: 0.5rem; margin-bottom: 0.75rem;
+    }
+    .description { color: #a6adc8; font-size: 0.9rem; margin-bottom: 1.25rem; }
+    .diagram-wrap {
+      background: #181825; border: 1px solid #313244; border-radius: 10px;
+      padding: 2rem 1.5rem; overflow-x: auto; display: flex; justify-content: center;
+    }
+    .diagram-wrap .mermaid { max-width: 100%; }
+    .hint { margin-top: 0.75rem; font-size: 0.8rem; color: #585b70; font-style: italic; }
+    code { background: #1e1e2e; padding: 0.1em 0.4em; border-radius: 4px; font-size: 0.85em; }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <h1>🧭 Questr — Architecture</h1>
+  <p class="subtitle">1. Using Questr (end-user) &nbsp;·&nbsp; 2. Backend wiring &nbsp;·&nbsp; 3. Collage evaluator/optimizer loop</p>
+
+  <!-- 1. End-user journey -->
+  <div class="diagram-section">
+    <h2>1. Using Questr — the end-user journey</h2>
+    <p class="description">Three activities: <strong>Explore</strong> any place on Earth, <strong>Play</strong> a timed hunt on the real landmarks around it, and <strong>Remember</strong> the day as a collage journal page. Found landmarks flow into the Journal automatically.</p>
+    <div class="diagram-wrap">
+      <div class="mermaid">
+graph TD
+    OPEN(["Open questr.pages.dev"]) --> EXPLORE
+
+    subgraph EXPLORE ["EXPLORE a place"]
+        SEARCH["Search an address<br/>or enter coordinates"]
+        CLICK["Click anywhere on the map<br/>or hit Locate Me"]
+        CARD["Place card:<br/>address, elevation, live weather,<br/>UV, sunrise/sunset, DMS, geohash"]
+        SEARCH --> CARD
+        CLICK --> CARD
+        CARD -->|"6 map styles, dark/light"| CARD
+    end
+
+    CARD --> HUNTSTART["Start Easter Egg Hunt<br/>(POIs load around the spot)"]
+
+    subgraph PLAY ["PLAY (90s against the clock)"]
+        HUNTSTART --> QUIZ["Quiz Hunt:<br/>answer questions about<br/>nearby landmarks"]
+        HUNTSTART --> GUESS["Guess the Spot:<br/>click the map where you<br/>think the landmark is"]
+        QUIZ --> SCORE["Score, streaks,<br/>passport XP, level-ups"]
+        GUESS --> SCORE
+    end
+
+    SCORE -->|"found POIs are collected"| JOURNAL
+
+    subgraph REMEMBER ["REMEMBER the day"]
+        JOURNAL["Open the Journal:<br/>every landmark you found"]
+        PHOTOS["Pick 3-6 trip photos"]
+        BUILD["Build collage<br/>(about a minute)"]
+        RESULT["AI-themed journal page:<br/>title, mood, layout chosen<br/>by the vision judge"]
+        JOURNAL --> PHOTOS --> BUILD --> RESULT
+    end
+
+    classDef entry fill:#1e3a5f,stroke:#89b4fa,color:#cdd6f4
+    classDef act fill:#1a3a2a,stroke:#a6e3a1,color:#cdd6f4
+    classDef reward fill:#3a2010,stroke:#fab387,color:#cdd6f4
+    class OPEN entry
+    class SEARCH,CLICK,HUNTSTART,QUIZ,GUESS,PHOTOS,BUILD act
+    class CARD,SCORE,JOURNAL,RESULT reward
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Backend wiring -->
+  <div class="diagram-section">
+    <h2>2. Backend — how the components are wired</h2>
+    <p class="description">The SPA is fully static (Cloudflare Pages, no secrets). Everything stateful lives on the edges: free geo APIs for exploration, one small always-on box for collage builds, S3 for images, and a GitHub Action that drives the same engine from a markdown file.</p>
+    <div class="diagram-wrap">
+      <div class="mermaid">
+graph LR
+    subgraph CLIENT ["Browser"]
+        SPA["Questr SPA<br/>(React + Leaflet,<br/>single component)"]
+        LOCAL[("localStorage<br/>journal + XP")]
+        SPA --- LOCAL
+    end
+
+    subgraph GEO ["Free geo APIs (no keys)"]
+        NOM["Nominatim<br/>(geocoding)"]
+        OM["Open-Meteo<br/>(elevation, weather)"]
+        OVP["Overpass<br/>(POIs for hunts)"]
+        TILES["Tile providers<br/>(OSM, Carto, Esri...)"]
+    end
+
+    subgraph BOX ["Vultr box (always on)"]
+        CADDY["Caddy<br/>(TLS)"]
+        FASTAPI["FastAPI<br/>POST /build<br/>(202 + predicted URL,<br/>builds in a thread)"]
+        CADDY --> FASTAPI
+    end
+
+    subgraph GH ["GitHub"]
+        REPO["Repo<br/>(collage-template.md)"]
+        GHA["Actions workflow<br/>(from_template)"]
+        REPO -->|"edit + push"| GHA
+        GHA -.->|"commit image + Result"| REPO
+    end
+
+    ENGINE["Collage engine<br/>(collage/ - theme, layouts,<br/>optimize, evaluate, render)"]
+    OR["OpenRouter<br/>(vision model)"]
+    S3[("AWS S3<br/>photos + collages<br/>public-read collage.jpg")]
+    CF["Cloudflare Pages<br/>(static host)"]
+
+    REPO -->|"push to main<br/>auto-deploys"| CF --> SPA
+    SPA -.->|"fetch"| NOM
+    SPA -.->|"fetch"| OM
+    SPA -.->|"fetch"| OVP
+    SPA -.->|"tiles"| TILES
+    SPA -->|"POST photos"| CADDY
+    SPA -.->|"poll until 200"| S3
+
+    FASTAPI --> ENGINE
+    GHA --> ENGINE
+    ENGINE -.->|"theme + judging"| OR
+    ENGINE -->|"upload JPEG"| S3
+
+    classDef entry fill:#1e3a5f,stroke:#89b4fa,color:#cdd6f4
+    classDef proc fill:#1a3a2a,stroke:#a6e3a1,color:#cdd6f4
+    classDef io fill:#3a2010,stroke:#fab387,color:#cdd6f4
+    class SPA,CF entry
+    class FASTAPI,GHA,ENGINE,CADDY proc
+    class NOM,OM,OVP,TILES,LOCAL,REPO,OR,S3 io
+      </div>
+    </div>
+    <p class="hint">Solid arrows: primary data path. Dashed: fetch/poll or bot write-back. The engine is the same code whether the API or the Action invokes it.</p>
+  </div>
+
+  <!-- 3. Collage evaluator/optimizer -->
+  <div class="diagram-section">
+    <h2>3. Collage — two ways in, one evaluator/optimizer loop</h2>
+    <p class="description">Both entry paths converge on the same generate → judge → refine loop. The judge is the vision model when a key is present (scoring by <em>template resemblance</em> on the GitHub path), and a deterministic composition heuristic offline — the loop always completes.</p>
+    <div class="diagram-wrap">
+      <div class="mermaid">
+graph TD
+    subgraph WAY1 ["Way 1 - Web app"]
+        W1A["Journal panel:<br/>pick 3-6 photos"] --> W1B["POST /build to the box<br/>(202 + collage URL returned<br/>before the build starts)"]
+    end
+
+    subgraph WAY2 ["Way 2 - GitHub, agentic"]
+        W2A["Edit collage-template.md:<br/>template image URL<br/>+ optional photo URLs"] --> W2B["Push - Action runs<br/>from_template.py<br/>(template steers theme AND judge)"]
+    end
+
+    W1B --> THEME
+    W2B --> THEME
+
+    subgraph LOOP ["Evaluator/optimizer loop (collage/optimize.py)"]
+        THEME["detect_theme<br/>vision reads title, mood, palette,<br/>layout hint (heuristic offline)"]
+        GEN["ROUND 1 - generate<br/>5 candidates: grid, hero,<br/>filmstrip, columns, polaroid"]
+        JUDGE{"EVALUATE<br/>vision judge scores 0-100<br/>(or resemblance to template,<br/>or crop-retention heuristic)"}
+        MUT["REFINE - mutate the winner<br/>guided by the judge's critique:<br/>cropped - reorder by aspect<br/>muddy - flip background<br/>rigid - rounder corners"]
+        BETTER{"score<br/>improved?"}
+
+        THEME --> GEN --> JUDGE
+        JUDGE -->|"winner + reason"| MUT --> BETTER
+        BETTER -->|"yes - up to round 3"| MUT
+        BETTER -->|"no - local optimum"| FINAL
+        FINAL["Render winner full-res<br/>1600x2000 journal page:<br/>gradient bg, shadows, serif title"]
+    end
+
+    FINAL --> OUT1["Upload to S3 -<br/>browser poll flips to 200<br/>and shows it inline"]
+    FINAL --> OUT2["Commit collage.jpg + rewrite<br/>Result section in the md file<br/>(+ S3 when creds present)"]
+
+    classDef entry fill:#1e3a5f,stroke:#89b4fa,color:#cdd6f4
+    classDef proc fill:#1a3a2a,stroke:#a6e3a1,color:#cdd6f4
+    classDef decide fill:#3a2a10,stroke:#f9e2af,color:#cdd6f4
+    classDef io fill:#3a2010,stroke:#fab387,color:#cdd6f4
+    class W1A,W1B,W2A,W2B entry
+    class THEME,GEN,MUT,FINAL proc
+    class JUDGE,BETTER decide
+    class OUT1,OUT2 io
+      </div>
+    </div>
+    <p class="hint">Round 2 mutations are re-judged; an improvement earns a round 3 from the new winner, and the first flat round stops the loop early.</p>
+  </div>
+
+</div>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    securityLevel: 'loose',
+    themeVariables: {
+      background: '#181825', mainBkg: '#181825', nodeBorder: '#45475a',
+      clusterBkg: '#1e1e2e', titleColor: '#cdd6f4',
+      edgeLabelBackground: '#181825', lineColor: '#6c7086',
+    }
+  });
+</script>
+</body>
+</html>
