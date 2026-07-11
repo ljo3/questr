@@ -57,7 +57,10 @@ def parse_front_matter(text: str) -> dict:
             elif val.startswith("[") and val.endswith("]"):
                 inner = val[1:-1].strip()            # inline flow list: [] or [a, b]
                 data[key] = [_unquote(x) for x in inner.split(",") if x.strip()]
-                current = None
+                # An empty `key: []` still accepts `- item` lines below it —
+                # people naturally append URLs under the placeholder without
+                # deleting the brackets, and those photos must not be dropped.
+                current = key if not data[key] else None
             else:
                 data[key] = _unquote(val)
                 current = None
@@ -155,7 +158,7 @@ def run(md_path: str) -> int:
         paths = sorted(
             os.path.join(_SAMPLE_DIR, f)
             for f in os.listdir(_SAMPLE_DIR)
-            if f.lower().endswith(s3io.IMAGE_EXT) and f != config.COLLAGE_NAME
+            if f.lower().endswith(s3io.IMAGE_EXT) and not f.startswith(config.COLLAGE_PREFIX)
         )
         photos = s3io.load_images(paths[:6])
         print(f"No photos in request — using {len(photos)} bundled sample(s)")
@@ -180,16 +183,19 @@ def run(md_path: str) -> int:
     rel_image = os.path.relpath(out_path, _ROOT).replace(os.sep, "/")
     print(f"Wrote {rel_image}")
 
-    # Best-effort S3 upload (uses <date>/collage.jpg like the daily build).
-    # Always attempt so the log is explicit about why it did/didn't happen —
-    # boto3 raises cleanly when no credentials are configured.
+    # Best-effort S3 upload. Each build gets a unique, title-derived object
+    # name (collage-<title-slug>-<HHMMSS>.jpg) so successive builds are all
+    # preserved instead of overwriting one another. Always attempt so the log
+    # is explicit about why it did/didn't happen — boto3 raises cleanly when
+    # no credentials are configured.
     s3_url = None
     date = meta.get("date") or dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
+    object_name = config.collage_object_name(theme.get("title"))
     have_creds = bool(os.environ.get("AWS_ACCESS_KEY_ID")
                       or os.environ.get("AWS_PROFILE"))
     print(f"[s3] AWS credentials in env: {have_creds}")
     try:
-        s3_url = s3io.upload_collage(date, out_path)
+        s3_url = s3io.upload_collage(date, out_path, name=object_name)
         print(f"Uploaded: {s3_url}")
     except Exception as e:
         print(f"[s3] upload skipped: {type(e).__name__}: {e}")

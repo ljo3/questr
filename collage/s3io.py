@@ -31,7 +31,7 @@ def list_photo_keys(date: str) -> list[str]:
             key = obj["Key"]
             if key.endswith("/"):
                 continue
-            if os.path.basename(key) == config.COLLAGE_NAME:
+            if os.path.basename(key).startswith(config.COLLAGE_PREFIX):
                 continue
             if key.lower().endswith(IMAGE_EXT):
                 keys.append(key)
@@ -48,16 +48,19 @@ def download_photos(date: str, dest_dir: str) -> list[str]:
     return paths
 
 
-def upload_collage(date: str, image_path: str) -> str:
-    """Upload the finished collage as <date>/collage.jpg and return its URL."""
-    key = f"{date}/{config.COLLAGE_NAME}"
+def upload_collage(date: str, image_path: str, name: str | None = None) -> str:
+    """Upload the finished collage as <date>/<name> and return its URL. `name`
+    defaults to the stable collage.jpg; pass a unique per-build name (see
+    config.collage_object_name) so successive builds don't overwrite."""
+    name = name or config.COLLAGE_NAME
+    key = f"{date}/{name}"
     _client().upload_file(
         image_path,
         config.BUCKET,
         key,
         ExtraArgs={"ContentType": "image/jpeg", "CacheControl": "no-cache"},
     )
-    return config.collage_url(date)
+    return config.collage_url(date, name)
 
 
 def load_images(paths: list[str]) -> list[Image.Image]:

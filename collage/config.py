@@ -4,7 +4,9 @@ Everything that differs between environments is read from the environment so
 the same code runs locally (heuristic fallback) and in GitHub Actions (with
 Claude + real S3 credentials).
 """
+import datetime as dt
 import os
+import re
 
 # ── S3 ────────────────────────────────────────────────────────────────────
 AWS_ACCOUNT = "333886071196"
@@ -14,15 +16,38 @@ AWS_ACCOUNT = "333886071196"
 AWS_REGION = os.environ.get("AWS_REGION") or "eu-west-3"
 BUCKET = os.environ.get("PHOTO_BUCKET") or "photo-bucket-333886071196-eu-west-3-an"
 
-# The single object we write per day. Photos live at <date>/<uuid>.jpg,
-# the finished collage at <date>/collage.jpg — so it is trivial for the
-# web app to fetch and never collides with an uploaded source photo.
-COLLAGE_NAME = "collage.jpg"
+# Photos live at <date>/<uuid>.jpg. Finished collages are all prefixed with
+# COLLAGE_PREFIX so they never collide with an uploaded source photo, and so
+# list_photo_keys can exclude them by prefix.
+COLLAGE_PREFIX = "collage"
+
+# The stable local file we commit to the repo (git keeps the history).
+COLLAGE_NAME = f"{COLLAGE_PREFIX}.jpg"
+
+
+def slugify(text: str, max_len: int = 40) -> str:
+    """Filesystem/URL-safe slug of a title, e.g. 'A Day Out!' -> 'a-day-out'."""
+    slug = re.sub(r"[^a-z0-9]+", "-", (text or "").lower()).strip("-")
+    return slug[:max_len].strip("-") or COLLAGE_PREFIX
+
+
+def collage_object_name(title: str | None = None, when: dt.datetime | None = None) -> str:
+    """A unique, human-readable S3 key suffix for one build so successive
+    builds never overwrite each other: `<title-slug>-<HHMMSS>/collage.jpg`.
+    The basename stays `collage.jpg` because the bucket policy grants public
+    read on `*/collage.jpg` — a different basename would upload fine but 403
+    on view. The title+time live in the folder segment instead."""
+    when = when or dt.datetime.now(dt.timezone.utc)
+    stamp = when.strftime("%H%M%S")
+    slug = slugify(title) if title else ""
+    folder = f"{slug}-{stamp}" if slug and slug != COLLAGE_PREFIX else stamp
+    return f"{folder}/{COLLAGE_NAME}"
+
 
 # Public URL a browser uses to display a finished collage (bucket must allow
-# public read on the collage.jpg objects — see README).
-def collage_url(date: str) -> str:
-    return f"https://{BUCKET}.s3.{AWS_REGION}.amazonaws.com/{date}/{COLLAGE_NAME}"
+# public read on the collage objects — see README).
+def collage_url(date: str, name: str = COLLAGE_NAME) -> str:
+    return f"https://{BUCKET}.s3.{AWS_REGION}.amazonaws.com/{date}/{name}"
 
 
 # ── Vision (via OpenRouter) ────────────────────────────────────────────────
